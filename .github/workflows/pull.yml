@@ -1,0 +1,39 @@
+name: Pull league data
+
+on:
+  workflow_dispatch:        # "Run workflow" button for a manual pull
+  schedule:
+    - cron: "7 * * * *"             # every hour, all week
+    - cron: "*/15 17-23 * * 0"      # Sunday games: every 15 min (10 AM to 5 PM Pacific)
+    - cron: "*/15 0-4 * * 1"        # Sunday night game (5 to 10 PM Pacific)
+    - cron: "*/15 0-4 * * 2"        # Monday night game
+    - cron: "*/15 0-4 * * 5"        # Thursday night game
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pull
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Pull ESPN and the commissioner sheet
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+        run: node fetch.mjs
+      - name: Save the new data
+        run: |
+          git config user.name "big-dawg-bot"
+          git config user.email "big-dawg-bot@users.noreply.github.com"
+          git add data
+          git diff --cached --quiet || git commit -m "League data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
