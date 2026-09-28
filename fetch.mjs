@@ -38,7 +38,7 @@ const roster={};j.teams.forEach(t=>roster[t.id]=(t.roster?t.roster.entries:[]).m
 const ids=[...new Set(j.draftDetail.picks.map(p=>p.playerId))];const pickPts={};
 for(let i=0;i<ids.length;i+=40){const k=await get('?view=kona_player_info',{'x-fantasy-filter':JSON.stringify({players:{filterIds:{value:ids.slice(i,i+40)}}})});(k.players||[]).forEach(pp=>{const p=pp.player;const st=(p.stats||[]).find(s=>s.id==='00'+Y);pickPts[p.fullName]=st?r2(st.appliedTotal):0});}
 // box scores
-const liveT={};const optWk={};const slot={},weekTop=[],weekBench=[],starter={},names={},proj={},ice=[],mv={},lu={};
+const liveT={};const WKP={};const optWk={};const slot={},weekTop=[],weekBench=[],starter={},names={},proj={},ice=[],mv={},lu={};
 const optimal=ents=>{const pool=ents.filter(e=>e.sl!=='IR').map(e=>({...e}));const take=(pos,n)=>{let s=0;for(let i=0;i<n;i++){const c=pool.filter(e=>pos.includes(e.pos)&&!e.u).sort((a,b)=>b.pts-a.pts)[0];if(c){c.u=1;s+=c.pts}}return s};
   return take(['QB'],1)+take(['RB'],2)+take(['WR'],3)+take(['TE'],1)+take(['RB','WR','TE'],1)+take(['D/ST'],1)+take(['K'],1)};
 const lastWk=Math.min(week+1,17);
@@ -49,6 +49,7 @@ for(let w=1;w<=lastWk;w++){const b=await get(`?view=mBoxscore&view=mMatchupScore
       if(w===week+1&&isStart){const gm=((PROG[p.proTeamId]||{})[w]||[])[0];const now=Date.now();const state=!gm?'bye':(gm.statsOfficial||now>gm.date+4*36e5)?'done':now>=gm.date?'live':'yet';
         const L=(liveT[tid]=liveT[tid]||[]);L.push([p.fullName,pos,sl,r2(pts),r2(q?q.appliedTotal:0),state,gm?gm.date:0]);}
       if(w>week)continue;
+      (WKP[w]=WKP[w]||[]).push([tid,p.fullName,pos,sl,r2(pts),r2(q?q.appliedTotal:0)]);
       ents.push({sl,pos,pts});
       if(w<=reg){slot[tid]=slot[tid]||{};slot[tid][sl]=(slot[tid][sl]||0)+pts}
       if(isStart){starter[tid+'|'+p.id+'|'+w]=pts;if(!best||pts>best[4])best=[w,tid,p.fullName,pos,r2(pts)];if(p.defaultPositionId!==16&&pts<=0)ice.push([w,tid,p.fullName,pos,r2(pts)]);
@@ -78,7 +79,7 @@ const mvps={};for(const tid in mv){mvps[mgr[tid]]=Object.values(mv[tid]).sort((a
 const lineup=Object.entries(lu).map(([tid,L])=>[Y,mgr[tid],r2(L[0]),r2(L[1]),r2(L[2]),r2(L[3]),L[4]]);
 const nextProj=proj[week+1]||{};
 const liveW=week+1;const live=liveW<=17?{week:liveW,updated:new Date().toISOString(),teams:liveT,matchups:(byWk[liveW]||[]).map(g=>[g.home.teamId,g.away.teamId,TIER[g.playoffTierType]||'N'])}:null;
-const out={live,pulled:new Date().toISOString(),week,teams,games:played,remaining,pickPts,roster,box:{slot,weekTop,weekBench,faab,proj:nextProj},proj:Object.fromEntries(Object.entries(proj).filter(([w])=>+w<=week)),ice,mvps,lineup,trades:tradeRows,optWk};
+const out={live,pulled:new Date().toISOString(),week,teams,games:played,remaining,pickPts,roster,box:{slot,weekTop,weekBench,faab,proj:nextProj},proj:Object.fromEntries(Object.entries(proj).filter(([w])=>+w<=week)),ice,mvps,lineup,trades:tradeRows,optWk,players:WKP};
 writeFileSync('data/live_espn.json',JSON.stringify(out));
 return `ESPN: week ${week}, games ${played.length}, trades ${tradeRows.length}, live week ${live&&live.week}`;
 }
