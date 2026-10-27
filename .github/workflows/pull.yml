@@ -27,3 +27,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Pull ESPN and the commissioner sheet
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+        run: node fetch.mjs
+      - name: Save the new data
+        run: |
+          git config user.name "big-dawg-bot"
+          git config user.email "big-dawg-bot@users.noreply.github.com"
+          for try in 1 2 3; do
+            git fetch -q origin main
+            git reset -q origin/main
+            git add data
+            if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+            git commit -q -m "League data $(date -u +%Y-%m-%dT%H:%MZ)"
+            if git push -q origin HEAD:main; then echo "Saved"; exit 0; fi
+            sleep 5
+          done
+          exit 1
